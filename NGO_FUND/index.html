@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NGO Fund Utilization Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+--bg: #0f172a; --panel: #111827; --muted: #9ca3af; --text: #e5e7eb;
+--accent: #22c55e; --danger: #ef4444; --border: #1f2937;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; background:var(--bg); color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+header { border-bottom:1px solid var(--border); background:rgba(17,24,39,.6); backdrop-filter:blur(8px); position:sticky; top:0; z-index:50; }
+.header-inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
+.brand { display:flex; align-items:center; gap:10px; font-weight:700; }
+.dot { width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); }
+.nav { display:flex; gap:18px; }
+.nav a { color:var(--text); text-decoration:none; padding:8px 10px; border-radius:8px; }
+.nav a.active { background:var(--border); }
+main { max-width:1100px; margin:24px auto; padding:0 16px; }
+.card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.value { font-size:24px; font-weight:700; }
+.muted { color:var(--muted); font-size:14px; }
+.form { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.full { grid-column: span 2; }
+.input, .select, .button { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0b1220; color:var(--text); }
+.button { background:var(--accent); color:#08281a; font-weight:700; border:none; cursor:pointer; }
+.button.secondary { background:var(--border); color:var(--text); }
+.button.danger { background:var(--danger); color:#fff; }
+.filters { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:12px; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:10px; border-bottom:1px solid var(--border); text-align:left; }
+th { color:var(--muted); font-weight:500; }
+.badge { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; }
+.badge.inflow { background:rgba(34,197,94,0.15); color:#86efac; border:1px solid rgba(34,197,94,0.35); }
+.badge.outflow { background:rgba(239,68,68,0.15); color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
+canvas { width:100% !important; height:320px !important; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+footer { color:var(--muted); border-top:1px solid var(--border); padding:20px 16px; text-align:center; margin-top:40px; }
+@media (max-width:900px){
+.grid-3{ grid-template-columns:1fr; }
+.form{ grid-template-columns:1fr; }
+.filters{ grid-template-columns:1fr 1fr; }
+.grid-2{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+<div class="header-inner">
+<div class="brand"><span class="dot"></span> NGO Fund Tracker</div>
+<nav class="nav">
+<a href="#home" class="active">Home</a>
+<a href="#dashboard">Dashboard</a>
+<a href="#transactions">Transactions</a>
+</nav>
+</div>
+</header>
+<main>
+<div id="home" class="card">
+<h2>Transparency and impact</h2>
+<p class="muted">Track every rupee across inflows and outflows, with filters, editing, and visual insights.</p>
+<div style="display:flex; gap:10px; margin-top:10px;">
+<a class="button" href="#dashboard">View dashboard</a>
+<a class="button secondary" href="#transactions">Manage transactions</a>
+<button id="seed" class="button secondary">Load demo data</button>
+</div>
+</div>
+<div id="dashboard" class="card">
+<h2>Overview</h2>
+<div class="grid-3">
+<div class="card">
+<div class="muted">Total inflow</div>
+<div id="inflow" class="value">—</div>
+</div>
+<div class="card">
+<div class="muted">Total outflow</div>
+<div id="outflow" class="value">—</div>
+</div>
+<div class="card">
+<div class="muted">Balance</div>
+<div id="balance" class="value">—</div>
+</div>
+</div>
+<div class="grid-2" style="margin-top:16px;">
+<div class="card">
+<div class="muted">Net by month</div>
+<canvas id="monthChart"></canvas>
+</div>
+<div class="card">
+<div class="muted">Amount by category</div>
+<canvas id="categoryChart"></canvas>
+</div>
+</div>
+</div>
+<div id="transactions" class="card">
+<h2>Add and review transactions</h2>
+<form id="txForm" class="form">
+<div>
+<label class="muted">Date</label>
+<input class="input" type="date" name="date" required>
+</div>
+<div>
+<label class="muted">Type</label>
+<select class="select" name="type" required>
+<option value="inflow">Inflow</option>
+<option value="outflow">Outflow</option>
+</select>
+</div>
+<div>
+<label class="muted">Amount (INR)</label>
+<input class="input" type="number" name="amount" min="0" step="1" required>
+</div>
+<div>
+<label class="muted">Category</label>
+<input class="input" type="text" name="category" placeholder="Donations, Education, Healthcare">
+</div>
+<div class="full">
+<label class="muted">Description</label>
+<input class="input" type="text" name="description" placeholder="Notes (optional)">
+</div>
+<div class="full">
+<label class="muted">Source/Beneficiary</label>
+<input class="input" type="text" name="sourceOrBeneficiary" placeholder="Donor or beneficiary (optional)">
+</div>
+<div class="full" style="display:flex; gap:10px;">
+<button class="button" type="submit">Add transaction</button>
+<button class="button secondary" type="button" id="clearAll">Clear all</button>
+</div>
+</form>
+<div class="card" style="margin-top:16px;">
+<div class="filters">
+<input id="q" class="input" type="text" placeholder="Search (desc, source, category)">
+<select id="fType" class="select">
+<option value="">All types</option>
+<option value="inflow">Inflow</option>
+<option value="outflow">Outflow</option>
+</select>
+<input id="fCat" class="input" type="text" placeholder="Category">
+<input id="start" class="input" type="date">
+<input id="end" class="input" type="date">
+<button class="button" id="apply">Apply filters</button>
+</div>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Type</th>
+<th>Amount</th>
+<th>Category</th>
+<th>Description</th>
+<th>Source/Beneficiary</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</div>
+</main>
+<footer>© 2026 NGO Fund Tracker</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<script>
+// ====================== CONFIG ======================
+const API_URL = 'api/transactions.php'; // Adjust path if needed (e.g., '/api/transactions.php')
+
+// ====================== HELPERS ======================
+const INR = v => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(v || 0);
+
+// Fetch all transactions from backend
+async function fetchTransactions() {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('Failed to fetch transactions');
+    return await res.json();
+}
+
+// ====================== COMPUTE SUMMARY ======================
+function computeSummary(list) {
+    let inflow = 0, outflow = 0;
+    const byCat = {}, byMonth = {};
+
+    list.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'inflow') inflow += amt;
+        else outflow += amt;
+
+        const cat = t.category || 'Uncategorized';
+        byCat[cat] = (byCat[cat] || 0) + amt;
+
+        const d = new Date(t.date);
+        const key = d && !isNaN(d) ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` : 'Unknown';
+        byMonth[key] = (byMonth[key] || 0) + (t.type === 'outflow' ? -amt : amt);
+    });
+
+    return { inflow, outflow, balance: inflow - outflow, byCat, byMonth };
+}
+
+// ====================== FILTER ======================
+function filter(list, { q, type, category, startDate, endDate }) {
+    return list.filter(t => {
+        const matchesType = type ? t.type === type : true;
+        const matchesCategory = category ? (t.category || '').toLowerCase() === category.toLowerCase() : true;
+        const text = [t.description, t.sourceOrBeneficiary, t.category].filter(Boolean).join(' ').toLowerCase();
+        const matchesSearch = q ? text.includes(q.toLowerCase()) : true;
+
+        const td = new Date(t.date).getTime();
+        const matchesStart = startDate ? td >= new Date(startDate).getTime() : true;
+        const matchesEnd = endDate ? td <= new Date(endDate).getTime() : true;
+
+        return matchesType && matchesCategory && matchesSearch && matchesStart && matchesEnd;
+    });
+}
+
+// ====================== RENDER ======================
+const inflowEl = document.getElementById('inflow');
+const outflowEl = document.getElementById('outflow');
+const balanceEl = document.getElementById('balance');
+const rowsEl = document.getElementById('rows');
+const monthCtx = document.getElementById('monthChart').getContext('2d');
+const catCtx = document.getElementById('categoryChart').getContext('2d');
+let monthChart, categoryChart;
+
+async function renderSummary(list) {
+    const s = computeSummary(list);
+    inflowEl.textContent = INR(s.inflow);
+    outflowEl.textContent = INR(s.outflow);
+    balanceEl.textContent = INR(s.balance);
+
+    // Monthly net chart
+    const mLabels = Object.keys(s.byMonth).sort();
+    const mData = mLabels.map(k => s.byMonth[k]);
+    if (monthChart) monthChart.destroy();
+    monthChart = new Chart(monthCtx, {
+        type: 'line',
+        data: { labels: mLabels, datasets: [{ label: 'Net', data: mData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.2)', tension: 0.3, fill: true }] },
+        options: { scales: { y: { ticks: { callback: v => INR(v) } } } }
+    });
+
+    // Category doughnut
+    const cLabels = Object.keys(s.byCat);
+    const cData = cLabels.map(k => s.byCat[k]);
+    if (categoryChart) categoryChart.destroy();
+    categoryChart = new Chart(catCtx, {
+        type: 'doughnut',
+        data: { labels: cLabels, datasets: [{ data: cData, backgroundColor: ['#22c55e','#3b82f6','#ef4444','#f59e0b','#8b5cf6','#14b8a6','#a3e635'] }] },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+}
+
+function renderTable(list) {
+    rowsEl.innerHTML = '';
+    list.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${new Date(t.date).toLocaleDateString('en-IN')}</td>
+            <td><span class="badge ${t.type}">${t.type}</span></td>
+            <td>${INR(t.amount)}</td>
+            <td>${t.category || ''}</td>
+            <td>${t.description || ''}</td>
+            <td>${t.sourceOrBeneficiary || ''}</td>
+            <td style="display:flex; gap:8px;">
+                <button class="button secondary" data-edit="${t.id}">Edit</button>
+                <button class="button danger" data-del="${t.id}">Delete</button>
+            </td>
+        `;
+        rowsEl.appendChild(tr);
+    });
+
+    // Delete buttons
+    rowsEl.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-del');
+            await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
+            refresh();
+        });
+    });
+
+    // Edit buttons (simple prompt-based)
+    rowsEl.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-edit');
+            const amount = prompt('New amount (INR):');
+            if (amount === null) return;
+            const category = prompt('New category (leave blank to keep current):');
+
+            const updates = { amount: Number(amount) };
+            if (category !== null && category.trim() !== '') updates.category = category.trim();
+
+            await fetch(`${API_URL}?id=${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            refresh();
+        });
+    });
+}
+
+// ====================== REFRESH ======================
+async function refresh() {
+    try {
+        const data = await fetchTransactions();
+        const filters = getFilters();
+        const filtered = filter(data, filters);
+
+        // Always show summary from filtered data; fallback to full if empty
+        renderSummary(filtered.length ? filtered : data);
+        renderTable(filtered);
+    } catch (err) {
+        alert('Error loading data: ' + err.message);
+    }
+}
+
+function getFilters() {
+    return {
+        q: document.getElementById('q').value.trim(),
+        type: document.getElementById('fType').value,
+        category: document.getElementById('fCat').value.trim(),
+        startDate: document.getElementById('start').value,
+        endDate: document.getElementById('end').value
+    };
+}
+
+// ====================== EVENT LISTENERS ======================
+document.getElementById('apply').addEventListener('click', refresh);
+
+document.getElementById('txForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target;
+    const tx = {
+        date: f.date.value,
+        type: f.type.value,
+        amount: Number(f.amount.value),
+        category: f.category.value || 'Uncategorized',
+        description: f.description.value || '',
+        sourceOrBeneficiary: f.sourceOrBeneficiary.value || ''
+    };
+
+    await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tx)
+    });
+
+    f.reset();
+    refresh();
+});
+
+document.getElementById('clearAll').addEventListener('click', async () => {
+    if (!confirm('Clear ALL transactions? This cannot be undone.')) return;
+
+    const data = await fetchTransactions();
+    for (const tx of data) {
+        await fetch(`${API_URL}?id=${tx.id}`, { method: 'DELETE' });
+    }
+    refresh();
+});
+
+document.getElementById('seed').addEventListener('click', async () => {
+    const mock = [
+        { date:'2025-12-01', type:'inflow', amount:150000, category:'Donations', description:'Major donor', sourceOrBeneficiary:'ABC Trust' },
+        { date:'2025-12-03', type:'outflow', amount:25000, category:'Education', description:'School supplies', sourceOrBeneficiary:'Local School' },
+        { date:'2025-12-05', type:'outflow', amount:18000, category:'Healthcare', description:'Medical camp', sourceOrBeneficiary:'Village Clinic' },
+        { date:'2025-12-08', type:'inflow', amount:50000, category:'Grants', description:'Govt grant', sourceOrBeneficiary:'State Program' },
+        { date:'2025-12-14', type:'outflow', amount:12000, category:'Operations', description:'Transport', sourceOrBeneficiary:'Logistics' }
+    ];
+
+    for (const item of mock) {
+        await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+        });
+    }
+
+    alert('Demo data added!');
+    refresh();
+});
+
+// Navigation hash handling
+function setActiveNav() {
+    const hash = location.hash || '#home';
+    document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === hash));
+    document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.addEventListener('hashchange', setActiveNav);
+setActiveNav();
+
+// Initial load
+refresh();
+</script>
+</body>
+</html>
