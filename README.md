@@ -7,6 +7,7 @@ C:\xampp\htdocs\NGO_FUND
 • 	Access the project in your browser at:
 
    http://127.0.0.1/NGO_FUND
+   
 ⚠️ Important: Always use  as the local URL when testing or demonstrating this project.
 
 
